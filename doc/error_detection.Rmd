@@ -1,0 +1,268 @@
+---
+title: 'Optical character recognition (OCR)'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_sections: true
+    code_folding: hide
+---
+
+Jing Wu
+
+GU4243/GR5243: Applied Data Science
+
+<style type="text/css">
+h1.title {
+  font-size: 24px;
+  color: Black;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: Black;
+}
+h2 { /* Header 2 */
+  font-size: 20px;
+  color: Black;
+}
+h3 { /* Header 3 */
+  font-size: 16px;
+  color: Black;
+}
+h4 { /* Header 4 */
+  font-size: 14px;
+  color: Grey;
+}
+</style>
+# Introduction {-}
+
+Optical character recognition (OCR) is the process of converting scanned images of machine printed or
+handwritten text (numerals, letters, and symbols), into machine readable character streams, plain (e.g. text files) or formatted (e.g. HTML files). As shown in Figure 1, the data *workflow* in a typical OCR system consists of three major stages:
+
+* Pre-processing
+
+* OCR character recognition
+
+* Post-processing
+
+![](../figs/ocr_flowchart.png) 
+
+We have processed raw scanned images through the first two steps are relying on the [Tessearct OCR machine](https://en.wikipedia.org/wiki/Tesseract_(software)). R package tutorial can be found [here](https://www.r-bloggers.com/the-new-tesseract-package-high-quality-ocr-in-r/). 
+
+BUT this is not the FOCUS of this project!!!
+
+In this project, we are going to **focus on the third stage -- post-processing**, which includes two tasks: *error detection* and *error correction*.  
+
+# Step 1 - Load library and source code
+```{r, warning=FALSE, message = FALSE}
+if (!require("devtools")) install.packages("devtools")
+if (!require("pacman")) {
+  ## devtools is required
+  library(devtools)
+  install_github("trinker/pacman")
+}
+
+library(tm)
+library(dplyr)
+library(stringdist)
+library(e1071)
+library(foreach)
+library(doParallel)
+library(parallelSVM)
+pacman::p_load(knitr, readr, stringr, tesseract, vecsets)
+source('../lib/ifCleanToken.R')
+file_name_vec <- list.files("../data/ground_truth") #100 files in total
+file_name_ocr <- list.files("../data/tesseract")
+```
+
+# Step 2 - Read ground_truth and tesseract file 
+```{r}
+source('../lib/readfile.R')
+
+##read the ground_truth 
+current_ground_truth_list <- lapply(file_name_vec,read_truth)
+##read the tesseract
+current_ocr_list <- lapply(file_name_ocr, read_ocr)
+```
+
+#Step 3 - Clean the token list
+```{r}
+##Find the lines with the same words length in each file 
+index <- list()
+ground_truth_selected <- list()
+ocr_selected <- list()
+for(i in 1:100){
+  number <- min(length(current_ground_truth_list[[i]]),length(current_ocr_list[[i]]))
+  length_ground <- rep(NA,number)
+  length_ocr <- rep(NA,number)
+  for(j in 1:number){
+    s_ground  <- unlist(strsplit((current_ground_truth_list[[i]])[j],split=" "))
+    s_truth <- unlist(strsplit((current_ocr_list[[i]])[j],split=" "))
+    length_ground[j] <- length(s_ground)
+    length_ocr[j] <- length(s_truth)
+  }
+  index[[i]]<- which(length_ground==length_ocr)
+}
+for( i in 1:100){
+  ground_truth_selected[[i]] <- current_ground_truth_list[[i]][index[[i]]]
+  ocr_selected[[i]] <- current_ocr_list[[i]][index[[i]]]
+}
+
+paste_fun <- function(txt){
+  current_ground_truth_words=paste(txt,collapse=" ")
+  return(current_ground_truth_words)
+}
+
+##paste the ground_truth together 
+truth_word_list <- lapply(ground_truth_selected,paste_fun)
+truth_word_list_total <- lapply(current_ground_truth_list,paste_fun)
+##paste the tesseract together 
+ocrword_list <- lapply(ocr_selected,paste_fun)
+
+##Find the number of words in each file
+word_length_ground <- rep(NA,100)
+word_length_ocr <- rep(NA,100)
+for(i in 1:100){
+  t_ground <- strsplit(truth_word_list[[i]],split=" ")
+  t_ocr <- strsplit(ocrword_list[[i]],split=" ")
+  word_length_ground[i] <- length(unlist(t_ground))
+  word_length_ocr[i] <- length(unlist(t_ocr))
+}
+
+id <- rep(1:100,each=word_length_ground)
+truth_word <- unlist(strsplit(unlist(truth_word_list),split=" "))
+ocrword <- unlist(strsplit(unlist(ocrword_list),split=" ")) #There are 258977 tokens selected in total
+error_index <- which(truth_word!=ocrword) 
+garbage <- rep(NA,length(truth_word))
+garbage <- as.numeric(truth_word!=ocrword)
+data <- cbind(truth_word, ocrword,id,garbage)
+
+```
+
+#Step 4 - feature1-9 extraction
+```{r}
+set.seed(2018)
+##feature construction 
+source('../lib/feature_extraction.R')
+f1 <- unlist(lapply(data[,"ocrword"],find_feature1))
+f2 <- unlist(lapply(data[,"ocrword"],find_feature2))
+f3 <- unlist(lapply(data[,"ocrword"],find_feature3))
+f4 <- unlist(lapply(data[,"ocrword"],find_feature4))
+f5 <- unlist(lapply(data[,"ocrword"],find_feature5))
+f6 <- unlist(lapply(data[,"ocrword"],find_feature6))
+f7 <- unlist(lapply(data[,"ocrword"],find_feature7))
+f8 <- unlist(lapply(data[,"ocrword"],find_feature8))
+f9 <- unlist(lapply(data[,"ocrword"],find_feature9))
+index_train <- sample(1:nrow(data),floor(0.8*nrow(data)),replace=FALSE) #The training index covers all 100 files as we sample 
+data_train <- data[index_train,]
+data_test <- data[-(index_train),]
+```
+
+```{r}
+#Since our trainset covers all 100 files, we use the all 100 files as the bigram list, the bigram for the testset is the same 
+truth_corpus<-VCorpus(VectorSource(truth_word_list_total))%>%
+    tm_map(content_transformer(tolower))%>%
+    tm_map(removePunctuation)%>%
+    tm_map(removeNumbers)%>%
+    tm_map(removeWords, character(0))%>%
+    tm_map(stripWhitespace)
+dict <- tidy(truth_corpus) %>%
+  select(text)  
+data("stop_words")
+completed <- dict %>%
+  mutate(id = file_name_vec)  %>%
+  unnest_tokens(dictionary, text) %>%
+  anti_join(stop_words,by = c("dictionary" = "word")) 
+list <- completed$dictionary
+LB <- unlist(lapply(list,find_tokens)) ##961227 bigrams in the bigram list 
+```
+
+##featrure 10-13 extraction
+
+```{r}
+#f10 <- unlist(lapply(data[,"ocrword"],find_feature10, LB))
+#save(f10,file='../output/feature_10and13.RData')
+```
+
+
+
+
+```{r}
+f11 <- unlist(lapply(data[,"ocrword"],find_feature11))
+f12 <- unlist(lapply(data[,"ocrword"],find_feature12))
+#f13 <- unlist(lapply((data[,"ocrword"]),find_feature13,LB))
+#save(f13,file='../output/feature13.RData')
+```
+
+
+
+#step 5 SVM training 
+```{r}
+library("e1071")
+library("parallelSVM")
+load('../output/feature_10and13.RData')
+load('../output/feature13.RData')
+data_final <- data.frame(data,f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13)
+data_train <- data_final[index_train,]
+data_test <- data_final[-(index_train),]
+dat_train <- data_train[,4:17]
+dat_test <- data_test[,4:17]
+kernel <- c("radial","linear","polynomial","sigmoid")
+cost <- c(5,10,15,20)
+gamma <- c(0.5,1,1.5,2,2.5,3)
+type <- c("C-classification","nu-classification")
+#svm_model <- svm(x=as.numeric(data_train[,5:16]),y=data_train[,4],kernal="radial",gamma=0.05,cost=3)
+
+```
+
+```{r}
+#Model with levenshtein distance
+s_model <- parallelSVM(garbage~.,dat_train,samplingSize=0.2,numberCores=4,kernel="radial",gamma=0.08,cost=1,nu=0.5,epsilon=0.1,na.action=na.omit)
+pred <- predict(s_model,dat_test)
+accuracy <- sum(pred!=dat_test[,1])/length(dat_test[,1])
+
+#Model without levenshtein diatnce
+model <- parallelSVM(garbage~.,dat_train[,-14],samplingSize=0.2,numberCores=4,kernel="radial",gamma=0.08,cost=1,nu=0.5,epsilon=0.1,na.action=na.omit)
+pred2 <- predict(model,dat_test)
+accuracy2 <- sum(pred2!=dat_test[,1])/length(dat_test[,1])
+
+
+```
+
+
+```{r}
+source('../lib/feature_extraction.R')
+f11 <- unlist(lapply(tolower(data[,"ocrword"]),find_feature11))
+f12 <- unlist(lapply((data[,"ocrword"]),find_feature12))
+#data <- data.frame(data,f1,f2,f3,f4,f5,f6,f7,f8,f9)
+## detect tesseract word error
+
+#tesseract_vec <- str_split(clean_tesseract_txt," ")[[1]] #1124 tokens
+#tesseract_if_clean <- unlist(lapply(tesseract_vec,ifCleanToken)) # source code of ifCleanToken in in lib folder
+```
+
+
+Besides the above required measurement, you are encouraged the explore more evaluation measurements. Here are some related references:
+
+1. Karpinski, R., Lohani, D., & Belaïd, A. *Metrics for Complete Evaluation of OCR Performance*. [pdf](https://csce.ucmss.com/cr/books/2018/LFS/CSREA2018/IPC3481.pdf)
+
+- section 2.1 Text-to-Text evaluation
+
+2. Mei, J., Islam, A., Wu, Y., Moh'd, A., & Milios, E. E. (2016). *Statistical learning for OCR text correction*. arXiv preprint arXiv:1611.06950. [pdf](https://arxiv.org/pdf/1611.06950.pdf)
+
+- section 5, separate the error detection and correction criterions
+
+3. Belaid, A., & Pierron, L. (2001, December). *Generic approach for OCR performance evaluation*. In Document Recognition and Retrieval IX (Vol. 4670, pp. 203-216). International Society for Optics and Photonics. [pdf](https://members.loria.fr/ABelaid/publis/spie02-belaid-pierron.pdf)
+
+- section 3.2, consider the text alignment
+
+# References {-}
+
+1. Borovikov, E. (2014). *A survey of modern optical character recognition techniques*. arXiv preprint arXiv:1412.4183.[pdf](https://pdfs.semanticscholar.org/79c9/cc90b8c2e2c9c54c3862935ea00df7dd56ed.pdf)
+(This paper is the source of our evaluation criterion)
+
+2. Kukich, K. (1992). *Techniques for automatically correcting words in text*. Acm Computing Surveys (CSUR), 24(4), 377-439. [pdf](http://www.unige.ch/eti/ptt/docs/kukich-92.pdf)
+(This paper is the benchmark review paper)
