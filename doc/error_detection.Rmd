@@ -294,7 +294,7 @@ error <- data_error[data_error$pred_all==1,]
 non_error <- data_error[(data_error$pred_all==0),]
 error_list <- list()
 for(i in 1:100){
-  error_list[[i]] <- error[error$id==i,"ocrword"]
+  error_list[[i]] <- as.character(error[error$id==i,"ocrword"])
   
 }
 #save(error_list,file="../output/error_list.RData")
@@ -304,7 +304,37 @@ load("../output/error_list.RData")
 ```
 
 
-##step 9 output the original text with error 
+##step 9 output the original text with error detected
 ```{r}
-save(ocr_selected,file="../output/ocr_selected.RData")
+p <- "[[:punct:]|[:digit:]]|[A-Z]"
+lo <- list()
+error_cleaned <- list()
+ground_truth_error <- list()
+ground_file <- list()
+f <- function(vector){
+  for(i in 1:length(vector)){
+    word <- vector[i]
+    logic <- rep(NA,length(vector))
+    s <- unlist(strsplit(word,split=NULL))
+    logic[i] <- ifelse(sum(grepl(p,s))==nchar(word),TRUE,FALSE)
+  }
+  return(logic) 
+}
+index_selected <- list()
+non_error <- list()
+for(i in 1:100){
+  lo[[i]] <- grepl(p,error_list[[i]])
+  error_cleaned[[i]] <- error_list[[i]][!lo[[i]]]
+  index_selected[[i]] <- which(lo[[i]]==FALSE)
+  non_error[[i]] <- ground_truth_selected[[i]][-(index_selected[[i]])]
+  j <- index_selected[[i]]
+  #ground_truth_selected[[i]][-j] <- error_cleaned[[]]
+  ground_truth_selected[[i]][j] <-as.vector(error_cleaned[[i]])
+  ground_truth_selected[[i]][-j] <- as.vector(non_error[[i]])
+}
+ground_file <- lapply(ground_truth_selected,paste_fun)
+save(error_cleaned,file="../output/error_list.RData")
+save(ground_file,file="../output/ground_truth_error.RData")
+#save(ocr_selected,file="../output/ocr_selected.RData")
+
 ```
