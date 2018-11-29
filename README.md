@@ -19,8 +19,7 @@ Term: Fall 2018
 + Zhong, Chenzhong: cleaned data, trained the LDA topic model, realized the OCR error model, and combined topic model with OCR error model to give post-corrections
 + Wu, Sarah Faye: participated in the group meeting about paper understanding
 + Yiming Shi: Paticipated in realizing the OCR error model, and combined topic model with OCR error model to give post-corrections
-
-  
++ Fangqi Ouyang: Complete the error detection part, construct features and tune the parameters for SVM, output error for corrections  
 
 
 
