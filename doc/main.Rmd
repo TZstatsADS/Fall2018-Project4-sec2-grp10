@@ -395,11 +395,6 @@ completed <- dict %>%
   anti_join(stop_words,by = c("dictionary" = "word")) ##149739 words
 
 
-bag_of_words <- completed%>%
-  select(dictionary)%>%
-  distinct()
-
-nrow(bag_of_words)
 
 
 completed1 <- completed %>%
@@ -426,10 +421,7 @@ k=5
 
 LDA(dtm,k, method='Gibbs', control=list(nstart=nstart, seed = seed, best=best, burnin = burnin, iter = iter, thin=thin))->mod_5
 
-## test model by input a new file. to be modified later
-VCorpus(VectorSource(completed1$text[1]))->cleaned_corpus_1
-DocumentTermMatrix(cleaned_corpus_1)->dtm_1
-posterior(mod_5,newdata=dtm_1)$topics
+
 ```
 
 
