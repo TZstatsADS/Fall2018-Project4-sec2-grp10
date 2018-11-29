@@ -6,7 +6,7 @@
 
 Term: Fall 2018
 
-+ Team #
++ Team # 10
 + Team members
 	+ Ouyang, Fangqi  fo2203@columbia.edu
 	+ Shi, Yiming  ys3050@columbia.edu
