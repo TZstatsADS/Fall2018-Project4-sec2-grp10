@@ -1,0 +1,319 @@
+---
+title: "New_detetction"
+author: "Fangqi Ouyang"
+date: "11/29/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Step 1 - Load library and source code
+```{r, warning=FALSE, message = FALSE}
+if (!require("devtools")) install.packages("devtools")
+if (!require("pacman")) {
+  ## devtools is required
+  library(devtools)
+  install_github("trinker/pacman")
+}
+
+library(tm)
+library(dplyr)
+library(stringdist)
+library(e1071)
+library(foreach)
+library(doParallel)
+library(parallelSVM)
+pacman::p_load(knitr, readr, stringr, tesseract, vecsets)
+source('../lib/ifCleanToken.R')
+file_name_vec <- list.files("../data/ground_truth") #100 files in total
+file_name_ocr <- list.files("../data/tesseract")
+```
+
+# Step 2 - Read ground_truth and tesseract file 
+```{r}
+source('../lib/readfile.R')
+
+##read the ground_truth 
+current_ground_truth_list <- lapply(file_name_vec,read_truth)
+##read the tesseract
+current_ocr_list <- lapply(file_name_ocr, read_ocr)
+```
+
+#Step 3 - Split the data and clean the  token list
+```{r}
+set.seed(2018)
+location <- sample(1:100,80,replace=FALSE)
+##Find the lines with the same words length in each file 
+index <- list()
+ground_truth_selected <- list()
+ocr_selected <- list()
+for(i in 1:100){
+  number <- min(length(current_ground_truth_list[[i]]),length(current_ocr_list[[i]]))
+  length_ground <- rep(NA,number)
+  length_ocr <- rep(NA,number)
+  for(j in 1:number){
+    s_ground  <- unlist(strsplit((current_ground_truth_list[[i]])[j],split=" "))
+    s_truth <- unlist(strsplit((current_ocr_list[[i]])[j],split=" "))
+    length_ground[j] <- length(s_ground)
+    length_ocr[j] <- length(s_truth)
+  }
+  index[[i]]<- which(length_ground==length_ocr)
+}
+for( i in 1:100){
+  ground_truth_selected[[i]] <- current_ground_truth_list[[i]][index[[i]]]
+  ocr_selected[[i]] <- current_ocr_list[[i]][index[[i]]]
+}
+
+ground_truth_selected_test <- ground_truth_selected[-location]
+paste_fun <- function(txt){
+  current_ground_truth_words=paste(txt,collapse=" ")
+  return(current_ground_truth_words)
+}
+bigram_file <-  current_ground_truth_list[location]
+bigram_list <- lapply(bigram_file,paste_fun)
+file_name_vec_bigram <- list.files("../data/ground_truth")[location]
+##paste the ground_truth together 
+truth_word_list <- lapply(ground_truth_selected,paste_fun)
+truth_word_list_total <- lapply(current_ground_truth_list,paste_fun)
+##paste the tesseract together 
+ocrword_list <- lapply(ocr_selected,paste_fun)
+
+##Find the number of words in each file
+word_length_ground <- rep(NA,100)
+word_length_ocr <- rep(NA,100)
+for(i in 1:100){
+  t_ground <- strsplit(truth_word_list[[i]],split=" ")
+  t_ocr <- strsplit(ocrword_list[[i]],split=" ")
+  word_length_ground[i] <- length(unlist(t_ground))
+  word_length_ocr[i] <- length(unlist(t_ocr))
+}
+
+id <- rep(1:100,each=word_length_ground)
+truth_word <- unlist(strsplit(unlist(truth_word_list),split=" "))
+ocrword <- unlist(strsplit(unlist(ocrword_list),split=" ")) #There are 258977 tokens selected in total
+error_index <- which(truth_word!=ocrword) 
+garbage <- rep(NA,length(truth_word))
+garbage <- as.numeric(truth_word!=ocrword)
+data <- cbind(truth_word, ocrword,id,garbage)
+```
+
+#Step 4 - feature extraction
+```{r}
+##feature1-9 extraction 
+source('../lib/feature_extraction.R')
+f1 <- unlist(lapply(data[,"ocrword"],find_feature1))
+f2 <- unlist(lapply(data[,"ocrword"],find_feature2))
+f3 <- unlist(lapply(data[,"ocrword"],find_feature3))
+f4 <- unlist(lapply(data[,"ocrword"],find_feature4))
+f5 <- unlist(lapply(data[,"ocrword"],find_feature5))
+f6 <- unlist(lapply(data[,"ocrword"],find_feature6))
+f7 <- unlist(lapply(data[,"ocrword"],find_feature7))
+f8 <- unlist(lapply(data[,"ocrword"],find_feature8))
+f9 <- unlist(lapply(data[,"ocrword"],find_feature9))
+```
+
+```{r}
+#Find the bigram for feature extraction
+truth_corpus<-VCorpus(VectorSource(bigram_list))%>%
+    tm_map(content_transformer(tolower))%>%
+    tm_map(removePunctuation)%>%
+    tm_map(removeNumbers)%>%
+    tm_map(removeWords, character(0))%>%
+    tm_map(stripWhitespace)
+dict <- tidy(truth_corpus) %>%
+  select(text)  
+data("stop_words")
+completed <- dict %>%
+  mutate(id = file_name_vec_bigram)  %>%
+  unnest_tokens(dictionary, text) %>%
+  anti_join(stop_words,by = c("dictionary" = "word")) 
+list <- completed$dictionary
+LB <- unlist(lapply(list,find_tokens)) ##751122 bigrams in the bigram list 
+```
+
+
+```{r}
+#featrure 10-13 extraction
+#f10 <- unlist(lapply(data[,"ocrword"],find_feature10, LB))
+#save(f10,file='../output/feature_10and13.RData')
+f11 <- unlist(lapply(data[,"ocrword"],find_feature11))
+f12 <- unlist(lapply(data[,"ocrword"],find_feature12))
+#f13 <- unlist(lapply((data[,"ocrword"]),find_feature13,LB))
+#save(f13,file='../output/feature13.RData')
+```
+
+
+
+#step 5 SVM error detection
+```{r}
+library("e1071")
+library("parallelSVM")
+load('../output/feature_10and13.RData')
+load('../output/feature13.RData')
+data_final <- data.frame(data,f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13)
+data_train <- data_final[(data[,"id"] %in%(location)),]
+data_test <- data_final[-(data[,"id"] %in%(location)),]
+dat_train <- data_train[,4:17]
+dat_test <- data_test[,4:17]
+kernel <- c("radial","linear","polynomial","sigmoid")
+cost <- c(5,10,15,20)
+gamma <- c(0.5,1,1.5,2,2.5,3)
+type <- c("C-classification","nu-classification")
+#svm_model <- svm(x=as.numeric(data_train[,5:16]),y=data_train[,4],kernal="radial",gamma=0.05,cost=3)
+
+```
+
+```{r}
+#Model with levenshtein distance
+s_model <- parallelSVM(garbage~.,dat_train,samplingSize=0.2,numberCores=4,kernel="radial",gamma=0.08,cost=1,nu=0.5,epsilon=0.1,na.action=na.omit)
+pred <- predict(s_model,dat_test)
+#save(pred,file='../output/prediction_leven.RData')
+accuracy <- 1-sum(pred!=dat_test[,1])/length(dat_test[,1])
+index_garbage <- pred==1
+garbage_correct <- pred[index_garbage]==dat_test[index_garbage,1]
+precision = sum(garbage_correct)/sum(index_garbage)
+recall = sum(garbage_correct)/sum(dat_test[,1]==1)
+
+#Model without levenshtein distance
+model <- parallelSVM(garbage~.,dat_train[,-14],samplingSize=0.2,numberCores=4,kernel="radial",gamma=0.08,cost=1,nu=0.5,epsilon=0.1,na.action=na.omit)
+pred2 <- predict(model,dat_test)
+#save(pred2,file='../output/prediction.RData')
+accuracy2 <- 1-sum(pred2!=dat_test[,1])/length(dat_test[,1])
+index_garbage2 <- pred2==1
+garbage_correct2 <- pred2[index_garbage2]==dat_test[index_garbage2,1]
+precision2 = sum(garbage_correct2)/sum(index_garbage2)
+recall2 = sum(garbage_correct2)/sum(dat_test[,1]==1)
+```
+
+
+
+## Step 6 Two Rule-Based Systems for error detection 
+```{r}
+source("../lib/al.R")
+logic <- lapply(as.vector(data_test[,"ocrword"]),ifClean_al)
+#al
+l <- as.numeric(unlist(ifelse(logic,0,1)))
+accuracy_al <- sum(l==data_test[,"garbage"])/length(data_test[,"garbage"])
+index_al <- l==1
+al_garbage <- l[index_al]==data_test[index_al,"garbage"]
+precision_al = sum(al_garbage)/sum(index_al)
+recallal = sum(al_garbage)/sum(data_test[,"garbage"]==1)
+```
+
+```{r}
+#kk
+source("../lib/k&k.R")
+logic2 <- lapply(as.vector(data_test[,"ocrword"]),ifClean_kk)
+l2 <- as.numeric(unlist(ifelse(logic2,0,1)))
+accuracy_kk <- sum(l2==data_test[,"garbage"])/length(data_test[,"garbage"])
+```
+
+```{r}
+index_kk <- l2==1
+kk_garbage <- l2[index_kk]==data_test[index_kk,"garbage"]
+precision_kk = sum(kk_garbage)/sum(index_kk)
+recallkk = sum(kk_garbage)/sum(data_test[,"garbage"]==1)
+
+```
+
+
+##step 7 Result Comparison
+```{r}
+p <- data.frame("SVM_with_Lev"= rep(NA,3),"SVM"=rep(NA,3),"al"=rep(NA,3),"kk"=rep(NA,3))
+row.names(p) <- c("Accuracy","Precision","Recall")
+p["Accuracy","SVM_with_Lev"] <- accuracy
+p["Precision","SVM_with_Lev"] <- precision
+p["Recall","SVM_with_Lev"] <- recall
+p["Accuracy","SVM"] <- accuracy2
+p["Precision","SVM"] <- precision2
+p["Recall","SVM"] <- recall2
+p["Accuracy","al"] <- accuracy_al
+p["Precision","al"] <- precision_al
+p["Recall","al"] <- recallal
+p["Accuracy","kk"] <- accuracy_kk
+p["Precision","kk"] <- precision_kk
+p["Recall","kk"] <- recallkk
+kable(p, caption="Summary of OCR performance")
+```
+
+
+## step 8 output the detected error for correction
+```{r}
+#pred_all <- predict(s_model,data_final[,4:17])
+#save(pred_all,file="../output/pred_all.RData")
+load("../output/pred_all.RData")
+data_error_test <- data.frame(data_test,p=pred_all[-(data_final[,"id"] %in% location)])
+data_error <- data.frame(data_final,pred_all)
+error <- data_error[data_error$pred_all==1,]
+error_test <- data_error_test[data_error_test$p==1,]
+non_error <- data_error[(data_error$pred_all==0),]
+error_list <- list()
+error_list_test <- list()
+for(i in 1:100){
+  error_list[[i]] <- as.character(error[error$id==i,"ocrword"])
+}
+for(i in 1:20){
+  error_list_test[[i]] <- as.character(error_test[error_test$id==i,"ocrword"])
+}
+p1 <- "[[:punct:]]"
+p2 <- "[A-Z]"
+p3 <- "[0-9]"
+lo <- list()
+lo2 <- list()
+error_cleaned_test <- list()
+error_cleaned <- list()
+ground_truth_error <- list()
+ground_file <- list()
+f <- function(vector){
+  logic <- rep(FALSE,length(vector))
+  for(i in 1:length(vector)){
+    word <- vector[i]
+    s <- unlist(strsplit(word,split=""))
+    l1 <- grepl(p1,s)
+    l2 <- grepl(p2,s)
+    l3 <- grepl(p3,s)
+    if(sum(l1,l2,l3)==0){
+      logic[i] = TRUE
+    }
+  }
+  return(logic) 
+}
+index_selected <- list()
+index_selected_test <- list()
+non_error <- list()
+non_error_test <- list()
+for(i in 1:100){
+  lo[[i]] <- f((error_list[[i]]))
+  error_cleaned[[i]] <- error_list[[i]][(lo[[i]])==TRUE]
+  index_selected[[i]] <- which(lo[[i]]==TRUE)
+  non_error[[i]] <- ground_truth_selected[[i]][-(index_selected[[i]])]
+  j <- index_selected[[i]]
+  #ground_truth_selected[[i]][-j] <- error_cleaned[[]]
+  ground_truth_selected[[i]][j] <-as.vector(error_cleaned[[i]])
+  ground_truth_selected[[i]][-j] <- as.vector(non_error[[i]])
+}
+for(i in 1:20){
+  lo2[[i]] <- f(error_list_test[[i]])
+  error_cleaned_test[[i]] <- error_list_test[[i]][lo2[[i]]==TRUE]
+  index_selected_test[[i]] <- which(lo2[[i]]==TRUE)
+  non_error_test[[i]] <- ground_truth_selected_test[[i]][-(index_selected_test[[i]])]
+  j <- index_selected_test[[i]]
+  #ground_truth_selected[[i]][-j] <- error_cleaned[[]]
+  ground_truth_selected_test[[i]][j] <-as.vector(error_cleaned_test[[i]])
+  ground_truth_selected_test[[i]][-j] <- as.vector(non_error_test[[i]])
+}
+ground_file <- lapply(ground_truth_selected,paste_fun)
+ground_file_test <- lapply(ground_truth_selected_test,paste_fun)
+#save(index_selected_test,file="../output/index_test.RData")
+#save(error_cleaned,file="../output/error_list.RData")
+#save(ground_file,file="../output/ground_truth_error.RData")
+#save(error_cleaned_test,file="../output/error_list_test.RData")
+#save(ground_file_test,file="../output/ground_truth_error_test.RData")
+#save(ocr_selected,file="../output/ocr_selected.RData")
+```
+
+
+
+
