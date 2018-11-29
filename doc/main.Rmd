@@ -325,7 +325,7 @@ non_error <- list()
 non_error_test <- list()
 for(i in 1:100){
   lo[[i]] <- f((error_list[[i]]))
-  error_cleaned[[i]] <- is.character(error_list[[i]][(lo[[i]])==TRUE])
+  error_cleaned[[i]] <- as.character(error_list[[i]][(lo[[i]])==TRUE])
   index_selected[[i]] <- which(lo[[i]]==TRUE)
   non_error[[i]] <- ground_truth_selected[[i]][-(index_selected[[i]])]
   j <- index_selected[[i]]
@@ -335,7 +335,7 @@ for(i in 1:100){
 }
 for(i in 1:20){
   lo2[[i]] <- f(error_list_test[[i]])
-  error_cleaned_test[[i]] <- is.character(error_list_test[[i]][lo2[[i]]==TRUE])
+  error_cleaned_test[[i]] <- as.character(error_list_test[[i]][lo2[[i]]==TRUE])
   index_selected_test[[i]] <- which(lo2[[i]]==TRUE)
   non_error_test[[i]] <- ground_truth_selected_test[[i]][-(index_selected_test[[i]])]
   j <- index_selected_test[[i]]
