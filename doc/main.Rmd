@@ -11,7 +11,7 @@ output:
     code_folding: hide
 ---
 
-Jing Wu
+Group 10
 
 GU4243/GR5243: Applied Data Science
 
@@ -81,6 +81,7 @@ pacman::p_load(knitr, readr, stringr, tesseract, vecsets)
 source('../lib/ifCleanToken.R')
 file_name_vec <- list.files("../data/ground_truth") #100 files in total
 file_name_ocr <- list.files("../data/tesseract")
+options(warn=-1)
 ```
 
 ##Step 2 - Read ground_truth and tesseract file 
@@ -278,7 +279,7 @@ kable(p, caption="Summary of OCR performance")
 ```
 
 
-## step 8 - output the detected error for correction
+## step 8 - Output the detected error for correction
 ```{r}
 #pred_all <- predict(s_model,data_final[,4:17])
 #save(pred_all,file="../output/pred_all.RData")
@@ -345,17 +346,17 @@ for(i in 1:20){
 }
 ground_file <- lapply(ground_truth_selected,paste_fun)
 ground_file_test <- lapply(ground_truth_selected_test,paste_fun)
-#save(index_selected_test,file="../output/index_test.RData")
-#save(error_cleaned,file="../output/error_list.RData")
-#save(ground_file,file="../output/ground_truth_error.RData")
-#save(error_cleaned_test,file="../output/error_list_test.RData")
-#save(ground_file_test,file="../output/ground_truth_error_test.RData")
-#save(ocr_selected,file="../output/ocr_selected.RData")
+save(index_selected_test,file="../output/index_test.RData")
+save(error_cleaned,file="../output/error_list.RData")
+save(ground_file,file="../output/ground_truth_error.RData")
+save(error_cleaned_test,file="../output/error_list_test.RData")
+save(ground_file_test,file="../output/ground_truth_error_test.RData")
+save(ocr_selected,file="../output/ocr_selected.RData")
 ```
 
 
 # PART II - Error correction
-## Step 1 - remove numbers, punctuations,stopwords etc 
+## Step 1 - Remove numbers, punctuations,stopwords etc 
 ```{r}
 
 lapply(paste("../data/ground_truth/",train_name_vec,sep=""),readLines,encoding="UTF-8")->truth_list
@@ -408,7 +409,7 @@ completed1 <- completed %>%
 
 
 
-##Step 2 -training data for LDA
+##Step 2 -Training data for LDA
 ```{r}
 #### get a freq matrix
 VCorpus(VectorSource(completed1$text))->cleaned_corpus
