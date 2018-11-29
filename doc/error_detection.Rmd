@@ -11,7 +11,7 @@ output:
     code_folding: hide
 ---
 
-Jing Wu
+fangqi ouyang
 
 GU4243/GR5243: Applied Data Science
 
@@ -88,7 +88,7 @@ current_ground_truth_list <- lapply(file_name_vec,read_truth)
 current_ocr_list <- lapply(file_name_ocr, read_ocr)
 ```
 
-#Step 3 - Clean the token list
+#Step 3 - Clean the corpus and token list
 ```{r}
 ##Find the lines with the same words length in each file 
 index <- list()
@@ -139,13 +139,12 @@ error_index <- which(truth_word!=ocrword)
 garbage <- rep(NA,length(truth_word))
 garbage <- as.numeric(truth_word!=ocrword)
 data <- cbind(truth_word, ocrword,id,garbage)
-
 ```
 
 #Step 4 - feature1-9 extraction
 ```{r}
 set.seed(2018)
-##feature construction 
+##feature1-9 extraction 
 source('../lib/feature_extraction.R')
 f1 <- unlist(lapply(data[,"ocrword"],find_feature1))
 f2 <- unlist(lapply(data[,"ocrword"],find_feature2))
@@ -180,17 +179,11 @@ list <- completed$dictionary
 LB <- unlist(lapply(list,find_tokens)) ##961227 bigrams in the bigram list 
 ```
 
-##featrure 10-13 extraction
 
 ```{r}
+#featrure 10-13 extraction
 #f10 <- unlist(lapply(data[,"ocrword"],find_feature10, LB))
 #save(f10,file='../output/feature_10and13.RData')
-```
-
-
-
-
-```{r}
 f11 <- unlist(lapply(data[,"ocrword"],find_feature11))
 f12 <- unlist(lapply(data[,"ocrword"],find_feature12))
 #f13 <- unlist(lapply((data[,"ocrword"]),find_feature13,LB))
@@ -199,7 +192,7 @@ f12 <- unlist(lapply(data[,"ocrword"],find_feature12))
 
 
 
-#step 5 SVM training 
+#step 5 SVM error detection
 ```{r}
 library("e1071")
 library("parallelSVM")
@@ -222,47 +215,92 @@ type <- c("C-classification","nu-classification")
 #Model with levenshtein distance
 s_model <- parallelSVM(garbage~.,dat_train,samplingSize=0.2,numberCores=4,kernel="radial",gamma=0.08,cost=1,nu=0.5,epsilon=0.1,na.action=na.omit)
 pred <- predict(s_model,dat_test)
-accuracy <- sum(pred!=dat_test[,1])/length(dat_test[,1])
+#save(pred,file='../output/prediction_leven.RData')
+accuracy <- 1-sum(pred!=dat_test[,1])/length(dat_test[,1])
+index_garbage <- pred==1
+garbage_correct <- pred[index_garbage]==dat_test[index_garbage,1]
+precision = sum(garbage_correct)/sum(index_garbage)
+recall = sum(garbage_correct)/sum(dat_test[,1]==1)
 
-#Model without levenshtein diatnce
+#Model without levenshtein distance
 model <- parallelSVM(garbage~.,dat_train[,-14],samplingSize=0.2,numberCores=4,kernel="radial",gamma=0.08,cost=1,nu=0.5,epsilon=0.1,na.action=na.omit)
 pred2 <- predict(model,dat_test)
-accuracy2 <- sum(pred2!=dat_test[,1])/length(dat_test[,1])
-
-
+#save(pred2,file='../output/prediction.RData')
+accuracy2 <- 1-sum(pred2!=dat_test[,1])/length(dat_test[,1])
+index_garbage2 <- pred2==1
+garbage_correct2 <- pred2[index_garbage2]==dat_test[index_garbage2,1]
+precision2 = sum(garbage_correct2)/sum(index_garbage2)
+recall2 = sum(garbage_correct2)/sum(dat_test[,1]==1)
 ```
 
+
+
+## Step 6 Two Rule-Based Systems for error detection 
+```{r}
+source("../lib/al.R")
+logic <- lapply(as.vector(data_test[,"ocrword"]),ifClean_al)
+#al
+l <- as.numeric(unlist(ifelse(logic,0,1)))
+accuracy_al <- sum(l==data_test[,"garbage"])/length(data_test[,"garbage"])
+index_al <- l==1
+al_garbage <- l[index_al]==data_test[index_al,"garbage"]
+precision_al = sum(al_garbage)/sum(index_al)
+recallal = sum(al_garbage)/sum(data_test[,"garbage"]==1)
+```
 
 ```{r}
-source('../lib/feature_extraction.R')
-f11 <- unlist(lapply(tolower(data[,"ocrword"]),find_feature11))
-f12 <- unlist(lapply((data[,"ocrword"]),find_feature12))
-#data <- data.frame(data,f1,f2,f3,f4,f5,f6,f7,f8,f9)
-## detect tesseract word error
+#kk
+source("../lib/k&k.R")
+logic2 <- lapply(as.vector(data_test[,"ocrword"]),ifClean_kk)
+l2 <- as.numeric(unlist(ifelse(logic2,0,1)))
+accuracy_kk <- sum(l2==data_test[,"garbage"])/length(data_test[,"garbage"])
+```
+```{r}
+index_kk <- l2==1
+kk_garbage <- l2[index_kk]==data_test[index_kk,"garbage"]
+precision_kk = sum(kk_garbage)/sum(index_kk)
+recallkk = sum(kk_garbage)/sum(data_test[,"garbage"]==1)
 
-#tesseract_vec <- str_split(clean_tesseract_txt," ")[[1]] #1124 tokens
-#tesseract_if_clean <- unlist(lapply(tesseract_vec,ifCleanToken)) # source code of ifCleanToken in in lib folder
 ```
 
 
-Besides the above required measurement, you are encouraged the explore more evaluation measurements. Here are some related references:
+##step 7 Result Comparison
+```{r}
+p <- data.frame("SVM_with_Lev"= rep(NA,3),"SVM"=rep(NA,3),"al"=rep(NA,3),"kk"=rep(NA,3))
+row.names(p) <- c("Accuracy","Precision","Recall")
+p["Accuracy","SVM_with_Lev"] <- accuracy
+p["Precision","SVM_with_Lev"] <- precision
+p["Recall","SVM_with_Lev"] <- recall
+p["Accuracy","SVM"] <- accuracy2
+p["Precision","SVM"] <- precision2
+p["Recall","SVM"] <- recall2
+p["Accuracy","al"] <- accuracy_al
+p["Precision","al"] <- precision_al
+p["Recall","al"] <- recallal
+p["Accuracy","kk"] <- accuracy_kk
+p["Precision","kk"] <- precision_kk
+p["Recall","kk"] <- recallkk
+kable(p, caption="Summary of OCR performance")
+```
 
-1. Karpinski, R., Lohani, D., & Belaïd, A. *Metrics for Complete Evaluation of OCR Performance*. [pdf](https://csce.ucmss.com/cr/books/2018/LFS/CSREA2018/IPC3481.pdf)
 
-- section 2.1 Text-to-Text evaluation
+## step 8 output the error 
+```{r}
+#pred_all <- predict(s_model,data_final[,4:17])
+#save(pred_all,file="../output/pred_all.RData")
+load("../output/pred_all.RData")
+data_error <- data.frame(data_final,pred_all)
+error <- data_error[data_error$pred_all==1,]
+non_error <- data_error[(data_error$pred_all==0),]
+error_list <- list()
+for(i in 1:100){
+  error_list[[i]] <- error[error$id==i,"ocrword"]
+  
+}
+#save(error_list,file="../output/error_list.RData")
+save(non_error,file="../output/non_error.RData")
+load("../output/non_error.RData")
+load("../output/error_list.RData")
+```
 
-2. Mei, J., Islam, A., Wu, Y., Moh'd, A., & Milios, E. E. (2016). *Statistical learning for OCR text correction*. arXiv preprint arXiv:1611.06950. [pdf](https://arxiv.org/pdf/1611.06950.pdf)
 
-- section 5, separate the error detection and correction criterions
-
-3. Belaid, A., & Pierron, L. (2001, December). *Generic approach for OCR performance evaluation*. In Document Recognition and Retrieval IX (Vol. 4670, pp. 203-216). International Society for Optics and Photonics. [pdf](https://members.loria.fr/ABelaid/publis/spie02-belaid-pierron.pdf)
-
-- section 3.2, consider the text alignment
-
-# References {-}
-
-1. Borovikov, E. (2014). *A survey of modern optical character recognition techniques*. arXiv preprint arXiv:1412.4183.[pdf](https://pdfs.semanticscholar.org/79c9/cc90b8c2e2c9c54c3862935ea00df7dd56ed.pdf)
-(This paper is the source of our evaluation criterion)
-
-2. Kukich, K. (1992). *Techniques for automatically correcting words in text*. Acm Computing Surveys (CSUR), 24(4), 377-439. [pdf](http://www.unige.ch/eti/ptt/docs/kukich-92.pdf)
-(This paper is the benchmark review paper)
