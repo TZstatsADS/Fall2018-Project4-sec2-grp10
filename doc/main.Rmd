@@ -57,7 +57,7 @@ BUT this is not the FOCUS of this project!!!
 In this project, we are going to **focus on the third stage -- post-processing**, which includes two tasks: *error detection* and *error correction*.  
 
 #Part I-Error Detection
-##Step 1 - Load library and source code
+## Step 1 - Load library and source code
 ```{r, warning=FALSE, message = FALSE}
 if (!require("devtools")) install.packages("devtools")
 if (!require("pacman")) {
@@ -84,7 +84,7 @@ file_name_ocr <- list.files("../data/tesseract")
 options(warn=-1)
 ```
 
-##Step 2 - Read ground_truth and tesseract file 
+## Step 2 - Read ground_truth and tesseract file 
 ```{r}
 source('../lib/readfile.R')
 
@@ -94,7 +94,7 @@ current_ground_truth_list <- lapply(file_name_vec,read_truth)
 current_ocr_list <- lapply(file_name_ocr, read_ocr)
 ```
 
-##Step 3 - Split the data and clean the  token list
+## Step 3 - Split the data and clean the  token list
 ```{r}
 set.seed(2018)
 test_name_vec=sample(file_name_vec,floor(length(file_name_vec)*0.2))
@@ -154,7 +154,7 @@ garbage <- as.numeric(truth_word!=ocrword)
 data <- cbind(truth_word, ocrword,id,garbage)
 ```
 
-##Step 4 - feature extraction
+## Step 4 - feature extraction
 ```{r}
 ##feature1-9 extraction 
 source('../lib/feature_extraction.R')
@@ -199,7 +199,7 @@ f12 <- unlist(lapply(data[,"ocrword"],find_feature12))
 #save(f13,file='../output/feature13.RData')
 ```
 
-##step 5 - SVM error detection
+## step 5 - SVM error detection
 ```{r}
 load('../output/feature_10and13.RData')
 load('../output/feature13.RData')
@@ -259,7 +259,7 @@ recallkk = sum(kk_garbage)/sum(data_test[,"garbage"]==1)
 
 ```
 
-##step 7- Result Comparison for error detection
+## step 7- Result Comparison for error detection
 ```{r}
 p <- data.frame("SVM_with_Lev"= rep(NA,3),"SVM"=rep(NA,3),"al"=rep(NA,3),"kk"=rep(NA,3))
 row.names(p) <- c("Accuracy","Precision","Recall")
@@ -276,6 +276,7 @@ p["Accuracy","kk"] <- accuracy_kk
 p["Precision","kk"] <- precision_kk
 p["Recall","kk"] <- recallkk
 kable(p, caption="Summary of OCR performance")
+##Here al and kk represents two rule-based algorithms 
 ```
 
 
@@ -409,7 +410,7 @@ completed1 <- completed %>%
 
 
 
-##Step 2 -Training data for LDA
+## Step 2 -Training data for LDA
 ```{r}
 #### get a freq matrix
 VCorpus(VectorSource(completed1$text))->cleaned_corpus
