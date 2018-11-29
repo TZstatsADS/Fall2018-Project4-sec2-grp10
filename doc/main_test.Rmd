@@ -451,7 +451,7 @@ load("../output/ocr_selected.RData")
 ```{r}
 dictionary=dtm$dimnames[[2]]
 dtm_test
-dictionary_stop=c(dictionary,stopwords())
+dictionary_stop=c(dictionary,stop_words$word)
 ```
 
 ### Step 5 - Confusion Matrice and Pobability Pr(ljf|ljs) 
@@ -506,14 +506,14 @@ letter
 ```{r}
 wordfreq=function(topic_model,candidates,post_coef){
   word_freq=numeric(length(candidates))
-  candidates%in%stopwords()->stopinds
+  candidates%in%stop_words$word->stopinds
   candidates%in%dictionary->notstopinds
   
   dictionary%in%candidates->inds
   wordfreq_topic=topic_model@beta[,inds]%>%exp()
   
   word_freq[notstopinds]=post_coef %*% wordfreq_topic
-  word_freq[stopinds]=0
+  word_freq[stopinds]=1
   return(word_freq)
 }
 
@@ -523,6 +523,7 @@ wordfreq=function(topic_model,candidates,post_coef){
 
 ###Step 9 - get best candidate for word error
 ```{r}
+
 bestCandidate=function(error_word,filenumber)
 {
   n=nchar(error_word)
