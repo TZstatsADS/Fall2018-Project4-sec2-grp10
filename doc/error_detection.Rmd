@@ -304,3 +304,7 @@ load("../output/error_list.RData")
 ```
 
 
+##step 9 output the original text with error 
+```{r}
+save(ocr_selected,file="../output/ocr_selected.RData")
+```
