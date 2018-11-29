@@ -345,12 +345,12 @@ for(i in 1:20){
 }
 ground_file <- lapply(ground_truth_selected,paste_fun)
 ground_file_test <- lapply(ground_truth_selected_test,paste_fun)
-save(index_selected_test,file="../output/index_test.RData")
-save(error_cleaned,file="../output/error_list.RData")
-save(ground_file,file="../output/ground_truth_error.RData")
-save(error_cleaned_test,file="../output/error_list_test.RData")
-save(ground_file_test,file="../output/ground_truth_error_test.RData")
-save(ocr_selected,file="../output/ocr_selected.RData")
+#save(index_selected_test,file="../output/index_test.RData")
+#save(error_cleaned,file="../output/error_list.RData")
+#save(ground_file,file="../output/ground_truth_error.RData")
+#save(error_cleaned_test,file="../output/error_list_test.RData")
+#save(ground_file_test,file="../output/ground_truth_error_test.RData")
+#save(ocr_selected,file="../output/ocr_selected.RData")
 ```
 
 
