@@ -429,10 +429,7 @@ k=5
 
 LDA(dtm,k, method='Gibbs', control=list(nstart=nstart, seed = seed, best=best, burnin = burnin, iter = iter, thin=thin))->mod_5
 
-## test model by input a new file. to be modified later
-#VCorpus(VectorSource(completed1$text[1]))->cleaned_corpus_1
-#DocumentTermMatrix(cleaned_corpus_1)->dtm_1
-#posterior(mod_5,newdata=dtm_1)$topics
+
 ```
 
 
@@ -445,6 +442,7 @@ load("../output/ground_truth_error.RData")
 load("../output/error_list_test.RData")
 load("../output/ground_truth_error_test.RData")
 load("../output/ocr_selected.RData")
+load("../output/post_topics.RData")
 ```
 
 ### Step 4 - get dictionary, dtm_test, dictionary_stop 
@@ -495,9 +493,8 @@ product<-function(lettermat,prob){
   return(prod(prob[lettermat]))}
 }
 
-letter<-lapply(correct_words,product,prob)%>%plyr::compact()%>%unlist()
 
-letter
+
 
 ```
 
@@ -531,7 +528,7 @@ bestCandidate=function(error_word,filenumber)
   sapply(dictionary_stop[nchar(dictionary_stop)==n],letterpair,error_word)%>%plyr::compact()->candidates
   
   lapply(candidates,product,prob)%>%plyr::compact()%>%unlist()->letter_prob #1x3
-  topicProbabilities<-posterior(mod_5,newdata=dtm_test[filenumber,])$topics #1x5
+  topicProbabilities<-t(post_topics[filenumber,]) #1x5
  
   word_freq=wordfreq(mod_5, names(candidates),as.matrix(topicProbabilities))
   
