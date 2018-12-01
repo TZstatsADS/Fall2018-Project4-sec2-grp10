@@ -460,7 +460,7 @@ rownames(sub)<-c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p"
 colnames(sub)<-c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z")
 
 prob<-sub/colSums(sub)
-prob
+
 
 ```
 
@@ -564,7 +564,7 @@ ground_file_test <- tidy(ground_file_test_corpus) %>%
 
 corrected_file_test=ground_file_test$dictionary
 coreected_file_test[index_selected_test]=corrections
-
+```
 ###Step 11 - Performance evaluation
 
 ```{r}
