@@ -450,7 +450,7 @@ load("../output/ocr_selected.RData")
 ### Step 4 - get dictionary, dtm_test, dictionary_stop 
 ```{r}
 dictionary=dtm$dimnames[[2]]
-dtm_test
+
 dictionary_stop=c(dictionary,stop_words$word)
 ```
 
@@ -556,7 +556,47 @@ replace_all_file=function(error_list){
   mapply(FUN=replace_error,error_list,filenumber=1:length(error_list))
 }
 
-replace_all_file()
+replace_all_file(cleaned_error_list)->correction_list
 
+corrections=unlist(corrections)
+
+ground_file_test_corpus<-VCorpus(VectorSource(ground_file_test))
+ground_file_test <- tidy(ground_file_test_corpus) %>%
+  select(text)%>%
+  unnest_tokens(dictionary, text)  
+
+corrected_file_test=ground_file_test$dictionary
+coreected_file_test[index_selected_test]=corrections
+
+###Step 11 - Performance evaluation
+
+```{r}
+ground_truth_selected_test_corpus<-VCorpus(VectorSource(ground_truth_selected_test))
+ground_truth_selected_test <- tidy(ground_truth_selected_test_corpus) %>%
+  select(text)%>%
+  unnest_tokens(dictionary, text) 
+ground_truth_selected_test%dictionary->ground_truth_selected_test   
+  
+
+#### word recall
+mean(ground_truth_selected_test==corrected_file_test)->wr
+#### word precision
+ocr_selected_test_corpus<-VCorpus(VectorSource(ocr_selected_test))
+ocr_selected_test <- tidy(ocr_selected_test_corpus) %>%
+  select(text)%>%
+  unnest_tokens(dictionary, text) 
+ocr_selected_test%dictionary->ocr_selected_test  
+
+sum(ground_truth_selected_test==corrected_file_test)/length(ocr_selected_test)->wp
+
+#### character recall
+ground_truth_character=strsplit(ground_truth_selected_test,integer(0))%>%unlist()
+corrected_character=strsplit(corrected_file_test,integer(0))%>%unlist()
+
+mean(ground_truth_character==corrected_character)->cr
+
+#### character precision
+ocr_test_character=strsplit(ocr_selected_test,integer(0))%>%unlist()
+sum(ground_truth_character==corrected_character)/length(ocr_test_character)->cp
 ```
 
