@@ -435,7 +435,7 @@ completed1 <- completed %>%
 
 
 
-##Step 2 -Training data for LDA
+## Step 2 -Training data for LDA
 ```{r}
 #### get a freq matrix
 VCorpus(VectorSource(completed1$text))->cleaned_corpus
@@ -475,14 +475,14 @@ load("../output/ground_truth_error_test.RData")
 load("../output/ocr_selected.RData")
 ```
 
-### Step 4 - get dictionary, dtm_test, dictionary_stop 
+## Step 4 - get dictionary, dtm_test, dictionary_stop 
 ```{r}
 dictionary=dtm$dimnames[[2]]
 
 dictionary_stop=c(dictionary,stop_words$word)
 ```
 
-### Step 5 - Confusion Matrice and Pobability Pr(ljf|ljs) 
+## Step 5 - Confusion Matrice and Pobability Pr(ljf|ljs) 
 ```{r}
 sub<-matrix(c(0,0,6,1,388,0,4,1,103,0,1,2,1,2,91,0,0,0,11,3,20,0,2,0,0,0,0,0,5,10,0,15,1,8,0,1,2,10,3,7,1,11,0,14,8,4,0,0,2,0,0,0,7,9,0,13,3,0,11,0,0,1,8,1,7,6,1,1,1,0,27,9,0,7,1,0,2,0,1,9,16,0,11,3,11,3,0,9,4,4,8,5,3,2,0,30,33,42,0,0,0,2,0,7,342,2,0,12,0,1,9,0,146,0,1,0,0,3,116,0,0,12,35,7,44,0,1,0,15,0,0,2,9,0,2,0,2,0,0,0,1,4,2,0,0,6,0,2,4,5,0,3,0,0,0,0,0,3,5,5,2,5,0,0,1,1,2,5,0,1,0,5,27,2,0,19,0,0,0,0,1,0,2,1,0,5,0,2,0,0,0,0,5,6,6,19,0,0,0,8,1,5,0,0,2,0,7,0,118,0,0,0,89,0,0,0,0,0,0,13,0,1,25,2,0,2,0,0,64,0,0,0,15,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,9,0,0,1,1,0,0,0,0,0,0,1,0,1,2,0,0,1,2,0,0,0,1,4,4,2,0,0,5,0,0,0,0,1,0,0,0,0,5,0,3,3,3,3,0,6,2,0,0,4,35,0,2,0,8,27,14,0,1,0,0,0,7,0,11,7,7,0,4,0,12,0,1,5,0,0,78,0,7,0,4,0,9,0,0,0,0,2,5,3,5,9,3,5,1,0,14,0,0,0,14,180,0,0,6,0,20,6,5,2,0,0,0,0,0,76,0,1,0,93,0,2,2,49,0,2,2,0,0,0,15,0,1,1,5,43,1,0,0,6,0,0,10,10,1,0,0,1,3,0,0,0,5,6,7,14,0,0,14,7,6,0,0,7,0,1,0,0,0,2,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,5,43,14,6,5,3,0,0,0,11,0,28,2,1,0,0,14,11,4,0,6,0,7,2,35,2,39,30,12,4,13,1,2,5,6,10,9,5,4,3,0,12,0,37,0,8,3,9,36,21,9,1,40,22,6,12,21,11,1,0,0,2,15,7,14,6,0,22,15,0,0,3,3,0,8,3,9,0,1,0,15,0,0,0,47,0,0,0,13,0,39,0,0,4,0,0,0,0,1,0,5,0,0,0,3,0,0,0,0,0,0,0,0,0,3,0,0,4,0,0,0,2,0,0,0,0,0,0,1,8,7,4,1,2,1,2,2,0,4,0,2,1,0,1,0,0,5,19,2,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,2,2,0,0,0,1,3,0,0,0,0,0,1,0,5,0,1,2,18,0,3,0,15,0,0,0,3,0,18,0,0,0,20,7,8,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,3,0,0,2,0,0,0,0,1,6,0,0,0,0,0,0), nrow=26,ncol=26)
 
@@ -494,7 +494,7 @@ prob
 
 ```
 
-### Step 6 - get pairs of diff letters from two words
+## Step 6 - get pairs of diff letters from two words
 ```{r}
 letterpair=function(error_word,dic_word)
 {
@@ -515,7 +515,7 @@ letterpair=function(error_word,dic_word)
 ```
 
 
-###Step 7 - get product of Pr(ljf|ljs) 
+## Step 7 - get product of Pr(ljf|ljs) 
 ```{r}
 product<-function(lettermat,prob){
   if(length(grep("[^a-z]",lettermat))>=1){return(NULL)}else{
@@ -527,7 +527,7 @@ product<-function(lettermat,prob){
 
 ```
 
-###Step 8 - get probability of the word
+## Step 8 - get probability of the word
 ```{r}
 wordfreq=function(topic_model,candidates,post_coef){
   word_freq=numeric(length(candidates))
@@ -545,7 +545,7 @@ wordfreq=function(topic_model,candidates,post_coef){
 
 ```
 
-###Step 9 - get best candidate for word error
+## Step 9 - get best candidate for word error
 ```{r}
 
 bestCandidate=function(error_word,filenumber)
@@ -567,7 +567,7 @@ bestCandidate=function(error_word,filenumber)
 
 ```
 
-###Step 10 - replace word error
+## Step 10 - replace word error
 ```{r}
 replace_error=function(error_vector,filenumber)
 {
@@ -592,7 +592,7 @@ corrected_file_test=ground_file_test$dictionary
 coreected_file_test[index_selected_test]=corrections
 ```
 
-###Step 11 - Performance evaluation
+## Step 11 - Performance evaluation
 
 ```{r}
 ground_truth_selected_test_corpus<-VCorpus(VectorSource(ground_truth_selected_test))
@@ -602,9 +602,8 @@ ground_truth_selected_test <- tidy(ground_truth_selected_test_corpus) %>%
 ground_truth_selected_test%dictionary -> ground_truth_selected_test   
   
 ```
-#### word recall
+### word recall
 ```{r}
-mean(ground_truth_selected_test==corrected_file_test)->wr
 #### word precision
 ocr_selected_test_corpus<-VCorpus(VectorSource(ocr_selected_test))
 ocr_selected_test <- tidy(ocr_selected_test_corpus) %>%
@@ -632,48 +631,6 @@ sum(ground_truth_character==corrected_character)/length(ocr_test_character)->cp
 
 
 
-
-
-
-## Step 4 - Performance measure 
-```{r}
-tesseract_deleted <- list()
-pos <- list()
-for(i in 1:100){
-  pos[[i]] <- which(error$id==i)
-}
-for(i in 1:100){
-  tesseract_deleted[[i]] <- current_ground_truth_list[[i]][-(pos[[i]])]
-}
-
-```
-
-```{r}
-ground_truth_vec <- str_split(paste(current_ground_truth_list, collapse = " ")," ")[[1]] 
-tesseract_vec <- str_split(paste(current_ocr_list, collapse = " ")," ")[[1]]
-tesseract_vec_deleted <- str_split(paste(tesseract_deleted, collapse = " ")," ")[[1]]
-#word level evaluation
-ground_truth_vec_remove <- gsub('[[:punct:]]+','',ground_truth_vec)
-tesseract_vec_remove <- gsub('[[:punct:]]+','',tesseract_vec)
-tesseract_vec_remove_deleted <- gsub('[[:punct:]]+','',tesseract_vec_deleted)
-old_intersect_vec <- vecsets::vintersect(tolower(ground_truth_vec_remove), tolower(tesseract_vec_remove)) 
-new_intersect_vec1 <- vecsets::vintersect(tolower(ground_truth_vec_remove), tolower(tesseract_vec_remove_deleted)) 
-new_intersect_vec_2 <- vecsets::vintersect(tolower(predict_grdth_vec_remove), tolower(predict_vec_remove))
-
-
-
-
-OCR_performance_table <- data.frame("Tesseract" = rep(NA,4),
-                                    "Tesseract_with_postprocessing" = rep(NA,4))
-row.names(OCR_performance_table) <- c("word_wise_recall","word_wise_precision",
-                                                 "character_wise_recall","character_wise_precision")
-OCR_performance_table["word_wise_recall","Tesseract"] <- length(old_intersect_vec)/length(ground_truth_vec)
-OCR_performance_table["word_wise_precision","Tesseract"] <- length(old_intersect_vec)/length(tesseract_vec)
-OCR_performance_table["word_wise_recall","Tesseract_with_postprocessing"] <- length(new_intersect_vec)/length(ground_truth_vec)
-OCR_performance_table["word_wise_precision","Tesseract_with_postprocessing"] <- length(new_intersect_vec)/length(tesseract_delete_error_vec)
-kable(OCR_performance_table, caption="Summary of OCR performance")
-
-```
 
 
 
