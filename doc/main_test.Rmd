@@ -572,7 +572,7 @@ ground_truth_selected_test_corpus<-VCorpus(VectorSource(ground_truth_selected_te
 ground_truth_selected_test <- tidy(ground_truth_selected_test_corpus) %>%
   select(text)%>%
   unnest_tokens(dictionary, text) 
-ground_truth_selected_test%dictionary->ground_truth_selected_test   
+ground_truth_selected_test$dictionary->ground_truth_selected_test   
   
 
 #### word recall
@@ -582,7 +582,7 @@ ocr_selected_test_corpus<-VCorpus(VectorSource(ocr_selected_test))
 ocr_selected_test <- tidy(ocr_selected_test_corpus) %>%
   select(text)%>%
   unnest_tokens(dictionary, text) 
-ocr_selected_test%dictionary->ocr_selected_test  
+ocr_selected_test$dictionary->ocr_selected_test  
 
 sum(ground_truth_selected_test==corrected_file_test)/length(ocr_selected_test)->wp
 
