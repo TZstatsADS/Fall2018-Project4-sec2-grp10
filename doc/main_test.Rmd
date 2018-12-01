@@ -555,7 +555,7 @@ replace_all_file=function(error_list){
 
 replace_all_file(cleaned_error_list)->correction_list
 
-corrections=unlist(corrections)
+corrections=unlist(correction_list)
 
 ground_file_test_corpus<-VCorpus(VectorSource(ground_file_test))
 ground_file_test <- tidy(ground_file_test_corpus) %>%
